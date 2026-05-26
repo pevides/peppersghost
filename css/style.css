@@ -1,53 +1,145 @@
+* {
+    box-sizing: border-box;
+}
+
 body {
-    margin: 0px;
-    background-color: #fff;
+    margin: 0;
+    min-height: 100vh;
     overflow: hidden;
-    font-family: Arial, sans-serif;
+    background:
+        radial-gradient(circle at top, rgba(31, 31, 31, 0.35), transparent 38%),
+        #000;
+    font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+    color: #f7f3ea;
 }
 
-/* HUD Container */
-.hud-container {
+canvas {
+    display: block;
+}
+
+.hud-panel {
     position: fixed;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
+    top: 0;
+    right: 0;
+    width: min(340px, 36vw);
+    height: 100vh;
+    padding: 1rem;
     display: flex;
-    gap: 12px;
-    padding: 12px 16px;
-    background: rgba(0, 0, 0, 0.65);
-    border-radius: 8px;
-    z-index: 100;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+    flex-direction: column;
+    gap: 1rem;
+    background: linear-gradient(180deg, rgba(14, 16, 20, 0.78), rgba(6, 8, 12, 0.92));
+    border-left: 1px solid rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    z-index: 10;
 }
 
-/* HUD Buttons */
+.hud-header h1,
+.hud-group h2,
+.hud-header p {
+    margin: 0;
+}
+
+.hud-kicker {
+    display: inline-block;
+    margin-bottom: 0.5rem;
+    font-size: 0.75rem;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: #98b3ff;
+}
+
+.hud-header h1 {
+    font-size: 1.45rem;
+    line-height: 1.1;
+}
+
+.hud-header p {
+    margin-top: 0.55rem;
+    color: rgba(247, 243, 234, 0.76);
+    font-size: 0.95rem;
+    line-height: 1.45;
+}
+
+.hud-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+}
+
+.hud-group h2 {
+    font-size: 0.78rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: rgba(247, 243, 234, 0.56);
+}
+
+.hud-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.7rem;
+}
+
 .hud-button {
-    padding: 10px 20px;
-    font-size: 13px;
+    appearance: none;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 0.95rem;
+    min-height: 3rem;
+    padding: 0.85rem 0.9rem;
+    color: #f7f3ea;
+    background: linear-gradient(180deg, rgba(35, 39, 50, 0.94), rgba(20, 24, 33, 0.98));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    font: inherit;
+    font-size: 0.92rem;
     font-weight: 700;
-    color: #ddd;
-    background-color: #222;
-    border: 2px solid #444;
-    border-radius: 6px;
+    letter-spacing: 0.02em;
     cursor: pointer;
-    transition: all 0.08s ease;
-    letter-spacing: 0.5px;
+    transition: transform 120ms ease, border-color 120ms ease, background-color 120ms ease, color 120ms ease, box-shadow 120ms ease;
+    touch-action: manipulation;
 }
 
-.hud-button:hover {
-    background-color: #333;
-    border-color: #555;
-    color: #fff;
+.hud-button:hover,
+.hud-button:focus-visible {
+    border-color: rgba(152, 179, 255, 0.65);
+    box-shadow: 0 0 0 3px rgba(152, 179, 255, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    outline: none;
 }
 
 .hud-button:active {
-    transform: translateY(1px) scale(0.98);
+    transform: translateY(1px) scale(0.99);
 }
 
 .hud-button.active {
-    background-color: #00ff88;
-    color: #002200;
-    border-color: #00ff88;
-    box-shadow: 0 0 12px #00ff88, inset 0 0 8px rgba(0, 255, 136, 0.3);
-    font-weight: 700;
+    color: #07121c;
+    background: linear-gradient(180deg, #b8e1ff, #7cc7ff);
+    border-color: rgba(180, 225, 255, 0.92);
+    box-shadow: 0 0 0 3px rgba(124, 199, 255, 0.18), 0 10px 22px rgba(0, 0, 0, 0.35);
+}
+
+.hud-button-wide {
+    grid-column: 1 / -1;
+}
+
+.hud-footer {
+    margin-top: auto;
+}
+
+@media (max-width: 860px) {
+    .hud-panel {
+        top: auto;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        width: 100%;
+        height: auto;
+        max-height: 52vh;
+        border-left: 0;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        overflow-y: auto;
+        padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+    }
+
+    .hud-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
 }
