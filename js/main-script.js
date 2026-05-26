@@ -13,13 +13,12 @@ let modelRoot;
 let currentMesh;
 let ambientLight;
 let directionalLight;
-let pointLight;
-let spotLight;
 let tesseractNormalMap;
 
 const state = {
     modelIndex: 0,
-    materialIndex: 2,
+    shadingMode: 'lambert',
+    lightingEnabled: true,
     lights: {
         directional: true,
         point: true,
@@ -43,39 +42,27 @@ const MODEL_LIBRARY = [
     },
     {
         label: 'Cubo',
-        createObject3D: () => new THREE.Mesh(new THREE.BoxGeometry(7.2, 7.2, 7.2), createMaterial())
+        createObject3D: () => {
+            const cubeGroup = new THREE.Group();
+            cubeGroup.userData.modelType = 'cube';
+            cubeGroup.add(new THREE.Mesh(new THREE.BoxGeometry(7.2, 7.2, 7.2), createMaterial()));
+            cubeGroup.add(createModelLights(3.6));
+            return cubeGroup;
+        }
     }
 ];
 
 const MATERIAL_LIBRARY = [
     {
-        label: 'Basic',
-        createMaterial: () => new THREE.MeshBasicMaterial({ color: 0xf4f4f0 })
+        label: 'Lambert',
+        createMaterial: () => new THREE.MeshLambertMaterial({ color: 0xffffff })
     },
     {
         label: 'Phong',
         createMaterial: () => new THREE.MeshPhongMaterial({
-            color: 0x7fd3ff,
-            specular: 0xffffff,
+            color: 0xffffff,
+            specular: 0x888888,
             shininess: 85
-        })
-    },
-    {
-        label: 'Standard',
-        createMaterial: () => new THREE.MeshStandardMaterial({
-            color: 0xd8b46a,
-            metalness: 0.22,
-            roughness: 0.38
-        })
-    },
-    {
-        label: 'Metal',
-        createMaterial: () => new THREE.MeshPhysicalMaterial({
-            color: 0xc9d2e3,
-            metalness: 1,
-            roughness: 0.16,
-            clearcoat: 0.6,
-            clearcoatRoughness: 0.2
         })
     }
 ];
@@ -91,22 +78,12 @@ function createScene() {
     modelRoot = new THREE.Group();
     scene.add(modelRoot);
 
-    ambientLight = new THREE.AmbientLight(0xffffff, 0.32);
+    ambientLight = new THREE.AmbientLight(0xffffff, 0.18);
     scene.add(ambientLight);
 
-    directionalLight = new THREE.DirectionalLight(0xffffff, 1.2);
-    directionalLight.position.set(6, 10, 8);
+    directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
+    directionalLight.position.set(8, 10, 6);
     scene.add(directionalLight);
-
-    pointLight = new THREE.PointLight(0xffc96d, 45, 60, 2);
-    pointLight.position.set(-8, 5, 9);
-    scene.add(pointLight);
-
-    spotLight = new THREE.SpotLight(0x88b8ff, 120, 80, Math.PI / 5, 0.45, 1.2);
-    spotLight.position.set(0, 12, 12);
-    spotLight.target.position.set(0, 0, 0);
-    scene.add(spotLight);
-    scene.add(spotLight.target);
 
     refreshLightStates();
     loadModel(state.modelIndex);
@@ -126,7 +103,7 @@ function createCamera() {
 /* CREATE OBJECT3D(S) */
 ////////////////////////
 function createMaterial() {
-    return MATERIAL_LIBRARY[state.materialIndex].createMaterial();
+    return MATERIAL_LIBRARY[state.shadingMode === 'phong' ? 1 : 0].createMaterial();
 }
 
 function createGeometryForPyramid() {
@@ -135,6 +112,37 @@ function createGeometryForPyramid() {
 
 function createGeometryForCube() {
     return new THREE.BoxGeometry(7.2, 7.2, 7.2);
+}
+
+function createModelLights(baseSize) {
+    const lightGroup = new THREE.Group();
+
+    const pointLightA = new THREE.PointLight(0xfff1db, 1.0, baseSize * 5.5, 2);
+    pointLightA.position.set(baseSize * 1.2, baseSize * 0.9, baseSize * 1.1);
+    lightGroup.add(pointLightA);
+
+    const pointLightB = new THREE.PointLight(0xe8f0ff, 0.85, baseSize * 5.5, 2);
+    pointLightB.position.set(-baseSize * 1.1, baseSize * 0.8, -baseSize * 1.2);
+    lightGroup.add(pointLightB);
+
+    const spotLightA = new THREE.SpotLight(0xffffff, 1.6, baseSize * 7.5, Math.PI / 6, 0.42, 1.1);
+    spotLightA.position.set(0, baseSize * 2.2, baseSize * 1.8);
+    spotLightA.target.position.set(0, 0, 0);
+    lightGroup.add(spotLightA);
+    lightGroup.add(spotLightA.target);
+
+    const spotLightB = new THREE.SpotLight(0xfff1c9, 1.4, baseSize * 7.5, Math.PI / 6, 0.42, 1.1);
+    spotLightB.position.set(baseSize * 1.8, baseSize * 1.6, -baseSize * 1.6);
+    spotLightB.target.position.set(0, 0, 0);
+    lightGroup.add(spotLightB);
+    lightGroup.add(spotLightB.target);
+
+    lightGroup.userData.lightTypes = {
+        point: [pointLightA, pointLightB],
+        spot: [spotLightA, spotLightB]
+    };
+
+    return lightGroup;
 }
 
 function createConcentricNormalMap() {
@@ -249,29 +257,23 @@ function createCubeShell(size, material, partName) {
 }
 
 function createTesseractFaceMaterial(partName) {
-    const palette = [
-        { color: 0x88d8ff, emissive: 0x061018, roughness: 0.42, metalness: 0.06 },
-        { color: 0xffc77a, emissive: 0x120b04, roughness: 0.36, metalness: 0.12 },
-        { color: 0xc4c8ff, emissive: 0x0b0c16, roughness: 0.25, metalness: 0.18 },
-        { color: 0xe4e4e4, emissive: 0x101010, roughness: 0.2, metalness: 0.22 }
-    ];
-    const preset = palette[state.materialIndex] || palette[2];
     const opacityByPart = {
         outer: 0.38,
         inner: 0.24,
         bridge: 0.16
     };
 
-    return new THREE.MeshStandardMaterial({
-        color: preset.color,
-        emissive: preset.emissive,
-        roughness: preset.roughness,
-        metalness: preset.metalness,
+    const MaterialClass = state.shadingMode === 'phong' ? THREE.MeshPhongMaterial : THREE.MeshLambertMaterial;
+
+    return new MaterialClass({
+        color: 0xffffff,
         transparent: true,
         opacity: opacityByPart[partName] || 0.2,
         side: THREE.DoubleSide,
         normalMap: createConcentricNormalMap(),
-        normalScale: new THREE.Vector2(0.9, 0.9)
+        normalScale: new THREE.Vector2(0.9, 0.9),
+        specular: state.shadingMode === 'phong' ? 0x666666 : undefined,
+        shininess: state.shadingMode === 'phong' ? 60 : undefined
     });
 }
 
@@ -300,6 +302,7 @@ function createTesseract() {
 
     tesseract.add(outerShell);
     tesseract.add(innerShell);
+    tesseract.add(createModelLights(4.0));
 
     const outerHalf = 7.8 * 0.5;
     const innerHalf = 4.2 * 0.5;
@@ -340,14 +343,9 @@ function createTesseract() {
 function createCatModel() {
     const catGroup = new THREE.Group();
     catGroup.userData.modelType = 'cat';
-    catGroup.userData.rotationAxis = 'y';
+    catGroup.add(createModelLights(3.6));
 
     const loader = new OBJLoader();
-    const whiteMaterial = new THREE.MeshStandardMaterial({
-        color: 0xffffff,
-        roughness: 0.65,
-        metalness: 0.02
-    });
 
     loader.load(
         'js/cat.obj',
@@ -358,7 +356,7 @@ function createCatModel() {
 
             object.traverse((child) => {
                 if (child.isMesh) {
-                    child.material = whiteMaterial;
+                    child.material = createMaterial();
                     child.castShadow = false;
                     child.receiveShadow = false;
                 }
@@ -410,6 +408,20 @@ function updateTesseractMaterials(object3D) {
     object3D.userData.tesseractMaterials = nextMaterials;
 }
 
+function updateGroupMaterials(object3D) {
+    object3D.traverse((child) => {
+        if (!child.isMesh) {
+            return;
+        }
+
+        if (child.material) {
+            child.material.dispose();
+        }
+
+        child.material = createMaterial();
+    });
+}
+
 function disposeCurrentMesh() {
     if (!currentMesh) {
         return;
@@ -445,6 +457,8 @@ function loadModel(index) {
     currentMesh = modelInfo.createObject3D();
     modelRoot.add(currentMesh);
 
+    refreshLightStates();
+
     state.modelIndex = index;
     updateHUDButtons();
 }
@@ -458,16 +472,20 @@ function changeModel(index) {
 }
 
 function changeMaterial(index) {
-    state.materialIndex = index;
+    state.shadingMode = index;
 
     if (currentMesh?.userData?.modelType === 'tesseract') {
         updateTesseractMaterials(currentMesh);
     } else if (currentMesh) {
-        const nextMaterial = createMaterial();
-        currentMesh.material.dispose();
-        currentMesh.material = nextMaterial;
+        updateGroupMaterials(currentMesh);
     }
 
+    updateHUDButtons();
+}
+
+function toggleLighting() {
+    state.lightingEnabled = !state.lightingEnabled;
+    refreshLightStates();
     updateHUDButtons();
 }
 
@@ -483,29 +501,43 @@ function toggleAnaglyph() {
 }
 
 function refreshLightStates() {
-    directionalLight.visible = state.lights.directional;
-    pointLight.visible = state.lights.point;
-    spotLight.visible = state.lights.spot;
+    const lightingEnabled = state.lightingEnabled;
+    ambientLight.visible = lightingEnabled;
+    directionalLight.visible = lightingEnabled && state.lights.directional;
+
+    if (!currentMesh) {
+        return;
+    }
+
+    currentMesh.traverse((child) => {
+        if (child.isPointLight) {
+            child.visible = lightingEnabled && state.lights.point;
+        } else if (child.isSpotLight) {
+            child.visible = lightingEnabled && state.lights.spot;
+        }
+    });
 }
 
 function updateHUDButtons() {
     const modelButtons = document.querySelectorAll('[data-model]');
-    const materialButtons = document.querySelectorAll('[data-material]');
+    const materialButtons = document.querySelectorAll('[data-shading]');
     const lightButtons = document.querySelectorAll('[data-light]');
     const anaglyphButton = document.getElementById('anaglyphBtn');
+    const lightingButton = document.getElementById('lightingBtn');
 
     modelButtons.forEach((button) => {
         button.classList.toggle('active', Number(button.dataset.model) === state.modelIndex);
     });
 
     materialButtons.forEach((button) => {
-        button.classList.toggle('active', Number(button.dataset.material) === state.materialIndex);
+        button.classList.toggle('active', button.dataset.shading === state.shadingMode);
     });
 
     lightButtons.forEach((button) => {
         button.classList.toggle('active', Boolean(state.lights[button.dataset.light]));
     });
 
+    lightingButton.classList.toggle('active', state.lightingEnabled);
     anaglyphButton.classList.toggle('active', state.anaglyph);
 }
 
@@ -564,13 +596,15 @@ function setupHUD() {
         button.addEventListener('click', () => changeModel(Number(button.dataset.model)));
     });
 
-    document.querySelectorAll('[data-material]').forEach((button) => {
-        button.addEventListener('click', () => changeMaterial(Number(button.dataset.material)));
+    document.querySelectorAll('[data-shading]').forEach((button) => {
+        button.addEventListener('click', () => changeMaterial(button.dataset.shading));
     });
 
     document.querySelectorAll('[data-light]').forEach((button) => {
         button.addEventListener('click', () => toggleLight(button.dataset.light));
     });
+
+    document.getElementById('lightingBtn').addEventListener('click', toggleLighting);
 
     document.getElementById('anaglyphBtn').addEventListener('click', toggleAnaglyph);
 
