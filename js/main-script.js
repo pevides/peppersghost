@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { AnaglyphEffect } from 'three/addons/effects/AnaglyphEffect.js';
+import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 
 //////////////////////
 /* GLOBAL VARIABLES */
@@ -37,8 +38,8 @@ const MODEL_LIBRARY = [
         createObject3D: () => createTesseract()
     },
     {
-        label: 'Pirâmide',
-        createObject3D: () => new THREE.Mesh(new THREE.ConeGeometry(4.5, 9, 4), createMaterial())
+        label: 'Gato',
+        createObject3D: () => createCatModel()
     },
     {
         label: 'Cubo',
@@ -336,6 +337,53 @@ function createTesseract() {
     return tesseract;
 }
 
+function createCatModel() {
+    const catGroup = new THREE.Group();
+    catGroup.userData.modelType = 'cat';
+    catGroup.userData.rotationAxis = 'y';
+
+    const loader = new OBJLoader();
+    const whiteMaterial = new THREE.MeshStandardMaterial({
+        color: 0xffffff,
+        roughness: 0.65,
+        metalness: 0.02
+    });
+
+    loader.load(
+        'js/cat.obj',
+        (object) => {
+            if (currentMesh !== catGroup) {
+                return;
+            }
+
+            object.traverse((child) => {
+                if (child.isMesh) {
+                    child.material = whiteMaterial;
+                    child.castShadow = false;
+                    child.receiveShadow = false;
+                }
+            });
+
+            const box = new THREE.Box3().setFromObject(object);
+            const center = box.getCenter(new THREE.Vector3());
+            const size = box.getSize(new THREE.Vector3());
+            const largestDimension = Math.max(size.x, size.y, size.z);
+            const scale = 8 / largestDimension;
+
+            object.position.sub(center);
+            object.scale.setScalar(scale);
+
+            catGroup.add(object);
+        },
+        undefined,
+        () => {
+            console.error('Failed to load cat.obj');
+        }
+    );
+
+    return catGroup;
+}
+
 function updateTesseractMaterials(object3D) {
     const previousMaterials = object3D.userData.tesseractMaterials;
     const nextMaterials = createTesseractMaterials();
@@ -481,12 +529,16 @@ function handleCollisions() {
 function update() {
     'use strict';
     if (currentMesh) {
-        currentMesh.rotation.y += 0.01;
-        currentMesh.rotation.x += 0.004;
-
         if (currentMesh.userData.modelType === 'tesseract') {
+            currentMesh.rotation.y += 0.01;
+            currentMesh.rotation.x += 0.004;
             const pulse = 1 + Math.sin(performance.now() * 0.003) * 0.12;
             currentMesh.scale.setScalar(pulse);
+        } else if (currentMesh.userData.modelType === 'cat') {
+            currentMesh.rotation.y += 0.012;
+        } else {
+            currentMesh.rotation.y += 0.01;
+            currentMesh.rotation.x += 0.004;
         }
     }
 }
