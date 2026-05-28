@@ -124,13 +124,14 @@ canvas {
     margin-top: auto;
 }
 
-@media (max-width: 860px) {
+@media (max-width: 480px) {
     .hud-panel {
         top: auto;
         bottom: 0;
         left: 0;
         right: 0;
-        width: 100%;
+        width: 280px;
+        max-width: 85vw;
         height: auto;
         max-height: 52vh;
         border-left: 0;
