@@ -790,3 +790,22 @@ function onKeyUp(e) {
 
 init();
 animate();
+
+const firstTouch = () => {
+    const doc = document.documentElement;
+    
+    if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+        if (doc.requestFullscreen) {
+            doc.requestFullscreen().catch(err => console.log(err));
+        } else if (doc.webkitRequestFullscreen) {
+            doc.webkitRequestFullscreen();
+        }
+    }
+    
+    window.removeEventListener('click', firstTouch);
+    window.removeEventListener('touchend', firstTouch);
+};
+
+// Listens for the first touch
+window.addEventListener('click', firstTouch);
+window.addEventListener('touchend', firstTouch);
