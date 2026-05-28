@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { AnaglyphEffect } from 'three/addons/effects/AnaglyphEffect.js';
 import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
 
 //////////////////////
 /* GLOBAL VARIABLES */
@@ -14,6 +16,10 @@ let currentMesh;
 let ambientLight;
 let directionalLight;
 let tesseractNormalMap;
+let artemisParts = [];
+let catParts = [];
+
+const artemisMeshMaps = new Map();
 
 const state = {
     modelIndex: 0,
@@ -33,7 +39,7 @@ const COLORS = {
 
 const MODEL_LIBRARY = [
     {
-        label: 'Tesseracto',
+        label: 'Tesseract',
         createObject3D: () => createTesseract()
     },
     {
@@ -41,14 +47,8 @@ const MODEL_LIBRARY = [
         createObject3D: () => createCatModel()
     },
     {
-        label: 'Cubo',
-        createObject3D: () => {
-            const cubeGroup = new THREE.Group();
-            cubeGroup.userData.modelType = 'cube';
-            cubeGroup.add(new THREE.Mesh(new THREE.BoxGeometry(7.2, 7.2, 7.2), createMaterial()));
-            cubeGroup.add(createModelLights(3.6));
-            return cubeGroup;
-        }
+        label: 'NASA Artemis',
+        createObject3D: () => createNASAArtemisModel()
     }
 ];
 
@@ -106,32 +106,24 @@ function createMaterial() {
     return MATERIAL_LIBRARY[state.shadingMode === 'phong' ? 1 : 0].createMaterial();
 }
 
-function createGeometryForPyramid() {
-    return new THREE.ConeGeometry(4.5, 9, 4);
-}
-
-function createGeometryForCube() {
-    return new THREE.BoxGeometry(7.2, 7.2, 7.2);
-}
-
 function createModelLights(baseSize) {
     const lightGroup = new THREE.Group();
 
-    const pointLightA = new THREE.PointLight(0xfff1db, 1.0, baseSize * 5.5, 2);
+    const pointLightA = new THREE.PointLight(0xfff1db, 1.3, baseSize * 5.5, 2);
     pointLightA.position.set(baseSize * 1.2, baseSize * 0.9, baseSize * 1.1);
     lightGroup.add(pointLightA);
 
-    const pointLightB = new THREE.PointLight(0xe8f0ff, 0.85, baseSize * 5.5, 2);
+    const pointLightB = new THREE.PointLight(0xe8f0ff, 0.95, baseSize * 5.5, 2);
     pointLightB.position.set(-baseSize * 1.1, baseSize * 0.8, -baseSize * 1.2);
     lightGroup.add(pointLightB);
 
-    const spotLightA = new THREE.SpotLight(0xffffff, 1.6, baseSize * 7.5, Math.PI / 6, 0.42, 1.1);
+    const spotLightA = new THREE.SpotLight(0xffffff, 2, baseSize * 7.5, Math.PI / 6, 0.42, 1.1);
     spotLightA.position.set(0, baseSize * 2.2, baseSize * 1.8);
     spotLightA.target.position.set(0, 0, 0);
     lightGroup.add(spotLightA);
     lightGroup.add(spotLightA.target);
 
-    const spotLightB = new THREE.SpotLight(0xfff1c9, 1.4, baseSize * 7.5, Math.PI / 6, 0.42, 1.1);
+    const spotLightB = new THREE.SpotLight(0xfff1c9, 1.6, baseSize * 7.5, Math.PI / 6, 0.42, 1.1);
     spotLightB.position.set(baseSize * 1.8, baseSize * 1.6, -baseSize * 1.6);
     spotLightB.target.position.set(0, 0, 0);
     lightGroup.add(spotLightB);
@@ -265,16 +257,21 @@ function createTesseractFaceMaterial(partName) {
 
     const MaterialClass = state.shadingMode === 'phong' ? THREE.MeshPhongMaterial : THREE.MeshLambertMaterial;
 
-    return new MaterialClass({
+    const materialConfig = {
         color: 0xffffff,
         transparent: true,
         opacity: opacityByPart[partName] || 0.2,
         side: THREE.DoubleSide,
         normalMap: createConcentricNormalMap(),
-        normalScale: new THREE.Vector2(0.9, 0.9),
-        specular: state.shadingMode === 'phong' ? 0x666666 : undefined,
-        shininess: state.shadingMode === 'phong' ? 60 : undefined
-    });
+        normalScale: new THREE.Vector2(0.9, 0.9)
+    };
+
+    if (state.shadingMode === 'phong') {
+        materialConfig.specular = 0x666666;
+        materialConfig.shininess = 60;
+    }
+
+    return new MaterialClass(materialConfig);
 }
 
 function createTesseractMaterials() {
@@ -348,14 +345,16 @@ function createCatModel() {
     const loader = new OBJLoader();
 
     loader.load(
-        'js/cat.obj',
+        'models/cat.obj',
         (object) => {
             if (currentMesh !== catGroup) {
                 return;
             }
 
+            catParts = [];
             object.traverse((child) => {
                 if (child.isMesh) {
+                    catParts.push(child);
                     child.material = createMaterial();
                     child.castShadow = false;
                     child.receiveShadow = false;
@@ -368,7 +367,7 @@ function createCatModel() {
             const largestDimension = Math.max(size.x, size.y, size.z);
             const scale = 8 / largestDimension;
 
-            object.position.sub(center);
+            object.position.copy(center).multiplyScalar(-scale);
             object.scale.setScalar(scale);
 
             catGroup.add(object);
@@ -380,6 +379,86 @@ function createCatModel() {
     );
 
     return catGroup;
+}
+
+function configTex(tex) {
+    if (!tex) return;
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.flipY = false;
+}
+
+function createNASAArtemisModel() {
+    const artemisGroup = new THREE.Group();
+    artemisGroup.userData.modelType = 'artemis';
+    artemisGroup.add(createModelLights(3.6));
+
+    const gltfLoader = new GLTFLoader();
+
+    gltfLoader.load(
+        'models/Artemis/Artemis.gltf',
+        (gltf) => {
+            if (currentMesh !== artemisGroup) {
+                return;
+            }
+
+            const model = gltf.scene;
+            gltf.textures && gltf.textures.forEach((tex) => configTex(tex));
+
+            if (gltf.parser && gltf.parser.json && gltf.parser.json.images) {
+                model.traverse((child) => {
+                    if (!child.isMesh || !child.material) return;
+                    const mat = child.material;
+                    [mat.map, mat.normalMap, mat.metalnessMap, mat.roughnessMap,
+                     mat.emissiveMap, mat.aoMap, mat.lightMap].forEach(configTex);
+                });
+            }
+
+            artemisParts = [];
+            artemisMeshMaps.clear();
+
+            model.traverse((child) => {
+                if (!child.isMesh) return;
+                artemisParts.push(child);
+                const gltfMat = child.material;
+                artemisMeshMaps.set(child.uuid, {
+                    map:          gltfMat.map   || null,
+                    metalnessMap: gltfMat.metalnessMap || null,
+                    roughnessMap: gltfMat.roughnessMap || null,
+                    color:        gltfMat.color ? gltfMat.color.clone() : null
+                });
+
+                const newMat = createMaterial();
+                const maps = artemisMeshMaps.get(child.uuid);
+                newMat.map = maps.map;
+                if (newMat.metalnessMap !== undefined) {
+                    newMat.metalnessMap = maps.metalnessMap;
+                    newMat.roughnessMap = maps.roughnessMap;
+                }
+                if (!newMat.map && maps.color) {
+                    newMat.color.copy(maps.color);
+                }
+                newMat.needsUpdate = true;
+                child.material = newMat;
+            });
+
+            const box = new THREE.Box3().setFromObject(model);
+            const center = box.getCenter(new THREE.Vector3());
+            const size = box.getSize(new THREE.Vector3());
+            const largestDimension = Math.max(size.x, size.y, size.z);
+            const scale = 14 / largestDimension;
+
+            model.position.copy(center).multiplyScalar(-scale);
+            model.scale.setScalar(scale);
+
+            artemisGroup.add(model);
+        },
+        undefined,
+        () => {
+            console.error('Failed to load Artemis model');
+        }
+    );
+
+    return artemisGroup;
 }
 
 function updateTesseractMaterials(object3D) {
@@ -409,17 +488,39 @@ function updateTesseractMaterials(object3D) {
 }
 
 function updateGroupMaterials(object3D) {
-    object3D.traverse((child) => {
-        if (!child.isMesh) {
-            return;
-        }
+    const modelType = object3D.userData.modelType;
 
-        if (child.material) {
-            child.material.dispose();
-        }
+    if (modelType === 'artemis') {
+        artemisParts.forEach((child) => {
+            if (child.material) {
+                child.material.dispose();
+            }
 
-        child.material = createMaterial();
-    });
+            const newMaterial = createMaterial();
+            const maps = artemisMeshMaps.get(child.uuid);
+
+            if (maps) {
+                newMaterial.map = maps.map;
+                if (newMaterial.metalnessMap !== undefined) {
+                    newMaterial.metalnessMap = maps.metalnessMap;
+                    newMaterial.roughnessMap = maps.roughnessMap;
+                }
+                if (!newMaterial.map && maps.color) {
+                    newMaterial.color.copy(maps.color);
+                }
+            }
+
+            newMaterial.needsUpdate = true;
+            child.material = newMaterial;
+        });
+    } else if (modelType === 'cat') {
+        catParts.forEach((child) => {
+            if (child.material) {
+                child.material.dispose();
+            }
+            child.material = createMaterial();
+        });
+    }
 }
 
 function disposeCurrentMesh() {
@@ -567,10 +668,9 @@ function update() {
             const pulse = 1 + Math.sin(performance.now() * 0.003) * 0.12;
             currentMesh.scale.setScalar(pulse);
         } else if (currentMesh.userData.modelType === 'cat') {
-            currentMesh.rotation.y += 0.012;
-        } else {
+            currentMesh.rotation.y += 0.007;
+        } else if (currentMesh.userData.modelType === 'artemis') {
             currentMesh.rotation.y += 0.01;
-            currentMesh.rotation.x += 0.004;
         }
     }
 }
@@ -594,19 +694,39 @@ function render() {
 function setupHUD() {
     document.querySelectorAll('[data-model]').forEach((button) => {
         button.addEventListener('click', () => changeModel(Number(button.dataset.model)));
+        button.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            changeModel(Number(button.dataset.model));
+        });
     });
 
     document.querySelectorAll('[data-shading]').forEach((button) => {
         button.addEventListener('click', () => changeMaterial(button.dataset.shading));
+        button.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            changeMaterial(button.dataset.shading);
+        });
     });
 
     document.querySelectorAll('[data-light]').forEach((button) => {
         button.addEventListener('click', () => toggleLight(button.dataset.light));
+        button.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            toggleLight(button.dataset.light);
+        });
     });
 
     document.getElementById('lightingBtn').addEventListener('click', toggleLighting);
+    document.getElementById('lightingBtn').addEventListener('touchend', (e) => {
+        e.preventDefault();
+        toggleLighting();
+    });
 
     document.getElementById('anaglyphBtn').addEventListener('click', toggleAnaglyph);
+    document.getElementById('anaglyphBtn').addEventListener('touchend', (e) => {
+        e.preventDefault();
+        toggleAnaglyph();
+    });
 
     updateHUDButtons();
 }
@@ -623,6 +743,7 @@ function init() {
     document.body.appendChild(renderer.domElement);
 
     anaglyphEffect = new AnaglyphEffect(renderer);
+    anaglyphEffect.eyeSeparation = 0.064;
     anaglyphEffect.setSize(window.innerWidth, window.innerHeight);
 
     createScene();
