@@ -30,7 +30,8 @@ const state = {
         point: true,
         spot: false
     },
-    anaglyph: false
+    anaglyph: false,
+    reverseHUD: false
 };
 
 const COLORS = {
@@ -601,6 +602,15 @@ function toggleAnaglyph() {
     updateHUDButtons();
 }
 
+function toggleReverseHUD() {
+    state.reverseHUD = !state.reverseHUD;
+    const hudPanel = document.querySelector('.hud-panel');
+    if (hudPanel) {
+        hudPanel.classList.toggle('mirror-mode', state.reverseHUD);
+    }
+    updateHUDButtons();
+}
+
 function refreshLightStates() {
     const lightingEnabled = state.lightingEnabled;
     ambientLight.visible = lightingEnabled;
@@ -624,6 +634,7 @@ function updateHUDButtons() {
     const materialButtons = document.querySelectorAll('[data-shading]');
     const lightButtons = document.querySelectorAll('[data-light]');
     const anaglyphButton = document.getElementById('anaglyphBtn');
+    const reverseHUDButton = document.getElementById('reverseHUDBtn');
     const lightingButton = document.getElementById('lightingBtn');
 
     modelButtons.forEach((button) => {
@@ -640,6 +651,7 @@ function updateHUDButtons() {
 
     lightingButton.classList.toggle('active', state.lightingEnabled);
     anaglyphButton.classList.toggle('active', state.anaglyph);
+    reverseHUDButton.classList.toggle('active', state.reverseHUD);
 }
 
 //////////////////////
@@ -720,6 +732,12 @@ function setupHUD() {
     document.getElementById('lightingBtn').addEventListener('touchend', (e) => {
         e.preventDefault();
         toggleLighting();
+    });
+
+    document.getElementById('reverseHUDBtn').addEventListener('click', toggleReverseHUD);
+    document.getElementById('reverseHUDBtn').addEventListener('touchend', (e) => {
+        e.preventDefault();
+        toggleReverseHUD();
     });
 
     document.getElementById('anaglyphBtn').addEventListener('click', toggleAnaglyph);

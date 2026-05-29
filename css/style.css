@@ -124,6 +124,21 @@ canvas {
     margin-top: auto;
 }
 
+.hud-panel.mirror-mode {
+    transform: rotate(180deg) translateX(-100%);
+    transform-origin: left center;
+}
+
+.hud-panel.mirror-mode .hud-button,
+.hud-panel.mirror-mode .hud-header,
+.hud-panel.mirror-mode .hud-group,
+.hud-panel.mirror-mode .hud-group h2,
+.hud-panel.mirror-mode .hud-header h1,
+.hud-panel.mirror-mode .hud-header p,
+.hud-panel.mirror-mode .hud-footer {
+    transform: none;
+}
+
 @media (max-width: 480px) {
     .hud-panel {
         top: auto;
